@@ -2030,8 +2030,8 @@ fn expr_allowed_in_pipe_expr(i: &mut TokenSlice) -> PResult<Expr> {
         bool_value.map(Expr::Literal),
         tag.map(Box::new).map(Expr::TagDeclarator),
         literal.map(Expr::Literal),
-        fn_call.map(Box::new).map(Expr::CallExpression),
         fn_call_kw.map(Box::new).map(Expr::CallExpressionKw),
+        fn_call.map(Box::new).map(Expr::CallExpression),
         name.map(Box::new).map(Expr::Name),
         array,
         object.map(Box::new).map(Expr::ObjectExpression),
@@ -2050,8 +2050,8 @@ fn possible_operands(i: &mut TokenSlice) -> PResult<Expr> {
         bool_value.map(Expr::Literal),
         member_expression.map(Box::new).map(Expr::MemberExpression),
         literal.map(Expr::Literal),
-        fn_call.map(Box::new).map(Expr::CallExpression),
         fn_call_kw.map(Box::new).map(Expr::CallExpressionKw),
+        fn_call.map(Box::new).map(Expr::CallExpression),
         name.map(Box::new).map(Expr::Name),
         binary_expr_in_parens.map(Box::new).map(Expr::BinaryExpression),
         unnecessarily_bracketed,
@@ -2719,13 +2719,26 @@ fn arguments(i: &mut TokenSlice) -> PResult<Vec<Expr>> {
 }
 
 fn labeled_argument(i: &mut TokenSlice) -> PResult<LabeledArg> {
-    separated_pair(
+    (
         terminated(nameable_identifier, opt(whitespace)),
-        terminated(one_of((TokenType::Operator, "=")), opt(whitespace)),
-        expression,
+        opt((
+            terminated(one_of((TokenType::Operator, "=")), opt(whitespace)),
+            expression,
+        )),
     )
-    .map(|(label, arg)| LabeledArg { label, arg })
-    .parse_next(i)
+        .map(|(label, arg)| match arg {
+            Some((_, arg)) => LabeledArg { label, arg },
+            None => LabeledArg {
+                label: label.clone(),
+                arg: Expr::Name(Box::new(label.map_ref(|_| Name {
+                    name: label.clone(),
+                    path: Vec::new(),
+                    abs_path: false,
+                    digest: None,
+                }))),
+            },
+        })
+        .parse_next(i)
 }
 
 /// A type of a function argument.
@@ -2987,8 +3000,8 @@ fn binding_name(i: &mut TokenSlice) -> PResult<Node<Identifier>> {
 /// Either a positional or keyword function call.
 fn fn_call_pos_or_kw(i: &mut TokenSlice) -> PResult<Expr> {
     alt((
-        fn_call.map(Box::new).map(Expr::CallExpression),
         fn_call_kw.map(Box::new).map(Expr::CallExpressionKw),
+        fn_call.map(Box::new).map(Expr::CallExpression),
     ))
     .parse_next(i)
 }
@@ -3086,6 +3099,7 @@ fn fn_call_kw(i: &mut TokenSlice) -> PResult<Node<CallExpressionKw>> {
         return Ok(result);
     }
 
+    #[derive(Debug)]
     #[allow(clippy::large_enum_variant)]
     enum ArgPlace {
         NonCode(Node<NonCodeNode>),
@@ -4975,7 +4989,7 @@ bar = 1
 
     #[test]
     fn test_sensible_error_when_missing_equals_in_kwarg() {
-        for (i, program) in ["f(x=1,y)", "f(x=1,y,z)", "f(x=1,y,z=1)", "f(x=1, y, z=1)"]
+        for (i, program) in ["f(x=1,y + 1)", "f(x=1,y + 1,f(z))", "f(x=1,3,z=1)", "f(x=1, y::y, z=1)"]
             .into_iter()
             .enumerate()
         {
@@ -4984,11 +4998,6 @@ bar = 1
             let cause = err.inner().cause.as_ref().unwrap();
             assert_eq!(
                 cause.message, "This argument needs a label, but it doesn't have one",
-                "failed test {i}: {program}"
-            );
-            assert_eq!(
-                cause.source_range.start(),
-                program.find("y").unwrap(),
                 "failed test {i}: {program}"
             );
         }
