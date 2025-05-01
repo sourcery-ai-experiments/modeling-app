@@ -1,4 +1,7 @@
-import { BillingRemaining, BillingRemainingMode } from '@src/components/BillingRemaining'
+import {
+  BillingRemaining,
+  BillingRemainingMode,
+} from '@src/components/BillingRemaining'
 import { Link, useLocation } from 'react-router-dom'
 
 import { CustomIcon } from '@src/components/CustomIcon'
