@@ -39,6 +39,8 @@ import {
 } from '@src/machines/systemIO/utils'
 import type { WebContentSendPayload } from '@src/menu/channels'
 import { openExternalBrowserIfDesktop } from '@src/lib/openWindow'
+import { CustomIcon } from '@src/components/CustomIcon'
+import Tooltip from '@src/components/Tooltip'
 
 type ReadWriteProjectState = {
   value: boolean
@@ -250,6 +252,18 @@ const Home = () => {
                 data-testid="home-text-to-cad"
               >
                 Generate with Text-to-CAD
+                <Tooltip position="bottom-left">
+                  <div className="text-sm flex flex-col max-w-xs">
+                    <div className="text-xs flex justify-center item-center gap-1 pb-1 border-b border-chalkboard-50">
+                      <CustomIcon name="beaker" className="w-4 h-4" />
+                      <span>Experimental</span>
+                    </div>
+                    <p className="pt-2 text-left">
+                      This feature is experimental and undergoing constant
+                      improvment, stay tuned for updates.
+                    </p>
+                  </div>
+                </Tooltip>
               </ActionButton>
             </li>
             <li className="contents">
